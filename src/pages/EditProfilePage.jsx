@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ChevronLeft, Camera, Save } from 'lucide-react';
+import NotificationModal from '../components/NotificationModal';
 
 export default function EditProfilePage() {
     const { user, updateProfile } = useApp();
     const navigate = useNavigate();
+    const fileInputRef = useRef(null);
+    const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
 
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || 'student@ui.ac.id',
         phone: user?.phone || '081234567890',
         university: user?.university || 'Universitas Indonesia',
-        major: user?.major || 'Teknik Informatika'
+        major: user?.major || 'Teknik Informatika',
+        photo: user?.photo || null
     });
 
     const handleChange = (e) => {
@@ -22,8 +26,23 @@ export default function EditProfilePage() {
     const handleSubmit = (e) => {
         e.preventDefault();
         updateProfile(formData);
-        alert('Profil berhasil diperbarui!');
-        navigate('/profile'); // Assuming /profile exists, or back to previous
+        setNotification({ show: true, type: 'success', message: 'Profil berhasil diperbarui!' });
+    };
+
+    const handleCloseNotification = () => {
+        setNotification({ ...notification, show: false });
+        navigate('/profile');
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, photo: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     return (
@@ -39,13 +58,24 @@ export default function EditProfilePage() {
 
                 {/* Avatar */}
                 <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
+                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                         <div className="w-24 h-24 rounded-full bg-slate-200 overflow-hidden border-4 border-white shadow-sm">
-                            <img src={`https://ui-avatars.com/api/?name=${formData.name}&background=random`} alt="Profile" className="w-full h-full object-cover" />
+                            <img
+                                src={formData.photo || `https://ui-avatars.com/api/?name=${formData.name}&background=random`}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                            />
                         </div>
-                        <button type="button" className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors">
+                        <button type="button" className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors group-hover:scale-110">
                             <Camera className="w-4 h-4" />
                         </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
                     </div>
                 </div>
 
@@ -113,6 +143,13 @@ export default function EditProfilePage() {
                     </button>
                 </div>
             </form>
+            {/* Notification Modal */}
+            <NotificationModal
+                show={notification.show}
+                type={notification.type}
+                message={notification.message}
+                onClose={handleCloseNotification}
+            />
         </div>
     );
 }

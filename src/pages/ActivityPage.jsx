@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, FileText, CheckCircle, Upload, Download, AlertCircle, Link as LinkIcon, Clock } from 'lucide-react';
+import { MessageCircle, FileText, CheckCircle, Upload, Download, AlertCircle, Link as LinkIcon, Clock, CheckCircle2, Video } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import NotificationModal from '../components/NotificationModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 export default function ActivityPage() {
     const { orders, user, finishJob, updateOrder } = useApp();
@@ -19,38 +21,42 @@ export default function ActivityPage() {
     }, [location.state]);
 
     // State to track uploaded files inputs for orders
-    const [uploadData, setUploadData] = useState({});
+    // Modals State
+    const [showConfirm, setShowConfirm] = useState({ show: false, action: null, title: '', message: '' });
+    const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
 
-    const handleFileChange = (orderId, e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setUploadData(prev => ({
-                ...prev,
-                [orderId]: { type: 'file', name: file.name, url: URL.createObjectURL(file) }
-            }));
-        }
-    };
-
-    const handleLinkChange = (orderId, e) => {
-        setUploadData(prev => ({
-            ...prev,
-            [orderId]: { type: 'link', name: 'Tautan Tugas', url: e.target.value }
-        }));
-    };
-
-    const handleFinish = (orderId) => {
+    const handleMarkDone = (orderId) => {
         const order = orders.find(o => o.id === orderId);
 
         // Mentoring doesn't need upload
         if (order?.type === 'mentoring') {
-            const confirmEnd = window.confirm("Akhiri sesi mentoring ini?");
-            if (confirmEnd) finishJob(orderId, { type: 'mentoring', name: 'Sesi Selesai' });
+            setShowConfirm({
+                show: true,
+                title: 'Akhiri Sesi Mentoring?',
+                message: 'Pastikan durasi mentoring sudah tercapai.',
+                action: () => {
+                    finishJob(orderId, { type: 'mentoring', name: 'Sesi Selesai' });
+                    setNotification({ show: true, type: 'success', message: 'Sesi mentoring selesai!' });
+                    setShowConfirm({ ...showConfirm, show: false });
+                }
+            });
             return;
         }
 
         const data = uploadData[orderId];
-        if (!data) return alert("Upload file atau masukkan link hasil terlebih dahulu!");
+        if (!data) {
+            setNotification({ show: true, type: 'error', message: 'Upload file atau link dulu!' });
+            return;
+        }
         finishJob(orderId, data);
+        setNotification({ show: true, type: 'success', message: 'Tugas berhasil dikirim!' });
+    };
+
+    const sendMeetingLink = (orderId, link) => {
+        if (link) {
+            updateOrder(orderId, { meetingLink: link });
+            setNotification({ show: true, type: 'success', message: 'Link meeting terkirim ke siswa!' });
+        }
     };
 
     // Filter orders based on role and active tab
@@ -195,17 +201,14 @@ export default function ActivityPage() {
                                                         <input
                                                             type="text"
                                                             placeholder="Paste Link Zoom/GMeet..."
-                                                            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                                                             defaultValue={order.meetingLink || ''}
                                                             onBlur={(e) => updateOrder(order.id, { meetingLink: e.target.value })}
                                                         />
                                                         <button
                                                             onClick={(e) => {
                                                                 const input = e.currentTarget.previousSibling;
-                                                                if (input.value) {
-                                                                    updateOrder(order.id, { meetingLink: input.value });
-                                                                    alert('Link meeting terkirim ke siswa!');
-                                                                }
+                                                                sendMeetingLink(order.id, input.value);
                                                             }}
                                                             className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700"
                                                         >
@@ -223,7 +226,7 @@ export default function ActivityPage() {
                                                         </button>
 
                                                         <button
-                                                            onClick={() => handleFinish(order.id)}
+                                                            onClick={() => handleMarkDone(order.id)}
                                                             className="col-span-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 mt-2 transition-all"
                                                         >
                                                             <CheckCircle className="w-5 h-5" />
@@ -233,48 +236,58 @@ export default function ActivityPage() {
                                                 </div>
                                             ) : (
                                                 // Joki View
-                                                <div className="space-y-3">
-                                                    <p className="text-sm font-bold text-slate-700">Upload Hasil Pengerjaan</p>
-                                                    <div className="flex flex-col gap-2">
-                                                        <input
-                                                            type="file"
-                                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                                            onChange={(e) => handleFileChange(order.id, e)}
-                                                        />
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs text-slate-400">atau Link:</span>
+                                                expandedOrderId === order.id ? (
+                                                    <div className="space-y-3">
+                                                        <p className="text-sm font-bold text-slate-700">Upload Hasil Pengerjaan</p>
+                                                        <div className="flex flex-col gap-2">
                                                             <input
-                                                                type="text"
-                                                                placeholder="https://drive.google.com/..."
-                                                                className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                                                                onChange={(e) => handleLinkChange(order.id, e)}
+                                                                type="file"
+                                                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                                                onChange={(e) => setUploadFile(e.target.files[0])}
                                                             />
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs text-slate-400">atau Link:</span>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="https://drive.google.com/..."
+                                                                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                                    value={resultLink}
+                                                                    onChange={(e) => setResultLink(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {(uploadFile || resultLink) && (
+                                                            <div className="text-green-600 flex items-center gap-2 text-xs font-bold bg-green-50 p-2 rounded-lg border border-green-100">
+                                                                <CheckCircle className="w-4 h-4" />
+                                                                Siap dikirim: {uploadFile ? uploadFile.name : 'Link Hasil'}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex gap-2 mt-4">
+                                                            <button
+                                                                onClick={() => setExpandedOrderId(null)}
+                                                                className="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2"
+                                                            >
+                                                                Batal
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleUploadResult(order.id)}
+                                                                disabled={!uploadFile && !resultLink}
+                                                                className="flex-1 bg-green-500 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-green-600 text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 disabled:shadow-none transition-all"
+                                                            >
+                                                                <CheckCircle className="w-4 h-4" /> Selesai
+                                                            </button>
                                                         </div>
                                                     </div>
-
-                                                    {uploadData[order.id] && (
-                                                        <div className="text-green-600 flex items-center gap-2 text-xs font-bold bg-green-50 p-2 rounded-lg border border-green-100">
-                                                            <CheckCircle className="w-4 h-4" />
-                                                            Siap dikirim: {uploadData[order.id].name}
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex gap-2 mt-4">
-                                                        <button
-                                                            onClick={() => navigate(`/chat/${order.id}`)}
-                                                            className="flex-1 bg-white border border-slate-200 py-2 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2"
-                                                        >
-                                                            <MessageCircle className="w-4 h-4" /> Chat
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleFinish(order.id)}
-                                                            disabled={!uploadData[order.id]}
-                                                            className="flex-1 bg-green-500 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-green-600 text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 disabled:shadow-none transition-all"
-                                                        >
-                                                            <CheckCircle className="w-4 h-4" /> Selesai
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setExpandedOrderId(order.id)}
+                                                        className="w-full bg-indigo-600 text-white py-3 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+                                                    >
+                                                        Upload Hasil
+                                                    </button>
+                                                )
                                             )}
                                         </div>
                                     )}
@@ -287,29 +300,36 @@ export default function ActivityPage() {
                                     <div className="flex items-center gap-3 mb-3">
                                         <CheckCircle className="w-5 h-5 text-green-600" />
                                         <div className="flex-1">
-                                            <p className="text-sm font-bold text-green-700">Tugas Selesai!</p>
-                                            {order.result && (
+                                            <p className="text-sm font-bold text-green-700">
+                                                {order.type === 'mentoring' ? 'Sesi Selesai' : 'Tugas Selesai!'}
+                                            </p>
+                                            {order.type !== 'mentoring' && order.result && (
                                                 <p className="text-xs text-green-600 mt-1">File: {order.result.name}</p>
+                                            )}
+                                            {order.type === 'mentoring' && (
+                                                <p className="text-xs text-green-600 mt-1">Durasi: 60 Menit</p>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Only Student can download result */}
-                                    {user.role === 'student' ? (
-                                        <a
-                                            href={order.result?.url || '#'}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            download={order.result?.type === 'file' ? order.result.name : undefined}
-                                            className="block w-full bg-green-600 text-white py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-decoration-none"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                            {order.result?.type === 'link' ? 'Buka Link Hasil' : 'Download Hasil'}
-                                        </a>
-                                    ) : (
-                                        <p className="text-xs text-green-600 text-center bg-white/50 py-1 rounded">
-                                            Anda mengirim: {order.result?.name || 'File'}
-                                        </p>
+                                    {/* Only Student can download result (Not for Mentoring) */}
+                                    {order.type !== 'mentoring' && (
+                                        user.role === 'student' ? (
+                                            <a
+                                                href={order.result?.url || '#'}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                download={order.result?.type === 'file' ? order.result.name : undefined}
+                                                className="block w-full bg-green-600 text-white py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-decoration-none"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                {order.result?.type === 'link' ? 'Buka Link Hasil' : 'Download Hasil'}
+                                            </a>
+                                        ) : (
+                                            <p className="text-xs text-green-600 text-center bg-white/50 py-1 rounded">
+                                                Anda mengirim: {order.result?.name || 'File'}
+                                            </p>
+                                        )
                                     )}
                                 </div>
                             )}
@@ -317,6 +337,23 @@ export default function ActivityPage() {
                     ))
                 )}
             </div>
-        </div>
+
+
+            <ConfirmationModal
+                show={showConfirm.show}
+                title={showConfirm.title}
+                message={showConfirm.message}
+                onConfirm={showConfirm.action}
+                onCancel={() => setShowConfirm({ ...showConfirm, show: false })}
+                type="danger"
+            />
+
+            <NotificationModal
+                show={notification.show}
+                type={notification.type}
+                message={notification.message}
+                onClose={() => setNotification({ ...notification, show: false })}
+            />
+        </div >
     );
 }

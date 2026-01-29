@@ -5,9 +5,10 @@ import logoImage from '../assets/logo.png';
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const { updateProfile } = useApp();
+    const { login } = useApp();
 
     const [form, setForm] = useState({ username: '', password: '' });
+    const [selectedRole, setSelectedRole] = useState('student');
     const [error, setError] = useState('');
 
     const handleLogin = (e) => {
@@ -19,13 +20,8 @@ export default function LoginPage() {
             return;
         }
 
-        // Mock Login Logic
-        // In a real app, we would verify credentials here.
-        // For now, allow any non-empty credentials.
-
-        // Update context user name to simulate "logged in as X"
-        updateProfile({ name: form.username, role: 'student' });
-
+        // Login with selected role
+        login(form.username, selectedRole);
         navigate('/dashboard');
     };
 
@@ -40,6 +36,24 @@ export default function LoginPage() {
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest max-w-[200px] leading-tight">
                         Smart Integrated Network for Education & Digital Intelligence
                     </p>
+                </div>
+
+                {/* Role Selector */}
+                <div className="w-full bg-slate-100 p-1 rounded-xl flex">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedRole('student')}
+                        className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${selectedRole === 'student' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Mahasiswa
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedRole('tutor')}
+                        className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${selectedRole === 'tutor' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Tutor
+                    </button>
                 </div>
 
                 {/* Form Section */}
@@ -76,7 +90,7 @@ export default function LoginPage() {
                         type="submit"
                         className="w-full bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold py-4 rounded-full shadow-lg shadow-yellow-400/20 transition-all active:scale-95 text-lg"
                     >
-                        Login
+                        Login as {selectedRole === 'student' ? 'Student' : 'Tutor'}
                     </button>
                 </form>
 

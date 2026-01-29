@@ -14,10 +14,48 @@ export function AppProvider({ children }) {
         };
     });
 
+    // Mock Tutors Data (Global for sync)
+    const [tutors, setTutors] = useState([
+        {
+            id: 1, name: 'Budi Santoso', skill: 'Matematika & Fisika', rate: 4.9, color: 'bg-blue-100', price: 100000,
+            availability: { days: ['Senin', 'Kamis'], timeStart: '10:00', timeEnd: '14:00' }
+        },
+        {
+            id: 2, name: 'Siti Aminah', skill: 'Bahasa Inggris', rate: 4.8, color: 'bg-pink-100', price: 85000,
+            availability: { days: ['Rabu', 'Jumat'], timeStart: '13:00', timeEnd: '17:00' }
+        },
+        {
+            id: 3, name: 'Rizky Febian', skill: 'Pemrograman Web', rate: 5.0, color: 'bg-orange-100', price: 120000,
+            availability: { days: ['Sabtu', 'Minggu'], timeStart: '09:00', timeEnd: '12:00' }
+        },
+        {
+            id: 4, name: 'Nedi Suryadi', skill: 'Teknik Informatika', rate: 5.0, color: 'bg-indigo-100', price: 50000,
+            availability: { days: ['Senin', 'Rabu', 'Jumat'], timeStart: '09:00', timeEnd: '17:00' }
+        },
+    ]);
+
     // Persist State
     useEffect(() => {
         localStorage.setItem('sinedi_user', JSON.stringify(user));
     }, [user]);
+
+    // Update Tutors List when User (Tutor) updates profile
+    useEffect(() => {
+        if (user && user.role === 'tutor') {
+            setTutors(prev => prev.map(t => {
+                if (t.name === user.name) {
+                    return {
+                        ...t,
+                        // Sync specific fields that Student sees
+                        availability: user.availability || t.availability,
+                        price: user.price || t.price // Assume user.price exists if they set it
+                        // Add more fields if needed
+                    };
+                }
+                return t;
+            }));
+        }
+    }, [user]); // Run whenever user updates
 
     // Mock Orders Data with Persistence
     const [orders, setOrders] = useState(() => {
@@ -71,15 +109,35 @@ export function AppProvider({ children }) {
     ]);
 
     // Actions
-    const switchMode = () => {
-        setUser(prev => ({
-            ...prev,
-            role: prev.role === 'student' ? 'tutor' : 'student'
-        }));
+    // Actions
+    const login = (username, role) => {
+        setUser({
+            name: username,
+            role: role,
+            wallet: role === 'tutor' ? 2500000 : 750000, // Different mock wallet for fun
+            availability: { days: ['Senin', 'Rabu', 'Jumat'], timeStart: '09:00', timeEnd: '17:00' }
+        });
     };
 
     const updateProfile = (updatedData) => {
-        setUser(prev => ({ ...prev, ...updatedData }));
+        setUser(prev => ({
+            ...prev,
+            ...updatedData,
+            availability: { ...prev.availability, ...(updatedData.availability || {}) },
+            tutorProfile: { ...prev.tutorProfile, ...(updatedData.tutorProfile || {}) }
+        }));
+    };
+
+    const switchMode = () => {
+        setUser(prev => {
+            const isStudent = prev.role === 'student';
+            return {
+                ...prev,
+                role: isStudent ? 'tutor' : 'student',
+                name: isStudent ? 'Nedi Suryadi' : 'Budi Santoso', // Auto-switch persona for better demo flow
+                wallet: isStudent ? 2500000 : 750000
+            };
+        });
     };
 
     const markAllRead = () => {
@@ -93,6 +151,23 @@ export function AppProvider({ children }) {
             ...orderData
         };
         setOrders([newOrder, ...orders]);
+
+        // If it's a Direct Request (Mentoring), Notify the specific Tutor immediately (Simulated)
+        if (orderData.tutorName) {
+            const notif = {
+                id: Date.now() + 1,
+                title: 'Permintaan Mentoring Baru',
+                desc: `Ada request masuk: ${orderData.title}`,
+                type: 'info',
+                isRead: false,
+                targetUser: orderData.tutorName // We would need filtering logic in Dashboard, but for simplicity assuming global notif list filtered by user relevance or just pushing to global for now
+            };
+            // In a real app, this would go to the backend. Here we push to a "notifications" array that we filter? 
+            // Current AppContext has simplistic 'notifications' state.
+            // Let's assume we append to it.
+            setNotifications(prev => [notif, ...prev]);
+        }
+
         return newOrder.id;
     };
 
@@ -167,8 +242,9 @@ export function AppProvider({ children }) {
 
     return (
         <AppContext.Provider value={{
-            user, orders, switchMode, createOrder, payOrder,
-            takeJob, finishJob, withdrawFunds, videos, addVideo,
+            user, orders, login, logout: () => setUser(null), switchMode, // Added switchMode
+            createOrder, payOrder, takeJob, finishJob, withdrawFunds,
+            videos, addVideo, tutors, // Added tutors
             notifications, markAllRead, updateProfile, updateOrder,
             addNotification
         }}>

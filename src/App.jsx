@@ -12,7 +12,10 @@ import ProfilePage from './pages/ProfilePage';
 import ChatPage from './pages/ChatPage';
 import NotificationPage from './pages/NotificationPage';
 import TutorSchedulePage from './pages/TutorSchedulePage';
+
 import EditProfilePage from './pages/EditProfilePage';
+import WalletHistoryPage from './pages/WalletHistoryPage';
+import ReviewsPage from './pages/ReviewsPage';
 
 function ProtectedRoute({ children }) {
   const { user } = useApp();
@@ -67,6 +70,16 @@ function App() {
           <Route path="/edit-profile" element={
             <ProtectedRoute>
               <EditProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/wallet-history" element={
+            <ProtectedRoute>
+              <WalletHistoryPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/reviews" element={
+            <ProtectedRoute>
+              <ReviewsPage />
             </ProtectedRoute>
           } />
 

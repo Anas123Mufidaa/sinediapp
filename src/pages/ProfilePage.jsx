@@ -12,21 +12,7 @@ export default function ProfilePage() {
 
     const handlePaymentMethods = () => {
         if (user.role !== 'tutor') return;
-
-        // Tutor Withdrawal Logic
-        const today = new Date().getDay(); // 5 is Friday
-        if (today === 5) {
-            const amount = prompt(`Saldo Anda: Rp ${user.wallet?.toLocaleString()}\nMasukkan nominal penarikan:`);
-            if (amount && !isNaN(amount)) {
-                if (withdrawFunds(parseInt(amount))) {
-                    alert('Permintaan penarikan dana berhasil diproses!');
-                } else {
-                    alert('Saldo tidak mencukupi!');
-                }
-            }
-        } else {
-            alert('Penarikan dana hanya dapat dilakukan setiap hari Jumat.');
-        }
+        navigate('/wallet-history');
     };
 
     return (
@@ -37,36 +23,23 @@ export default function ProfilePage() {
                 {/* User Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 mb-6">
                     <div className="w-16 h-16 rounded-full bg-slate-200 overflow-hidden shrink-0">
-                        {/* Placeholder Avatar */}
-                        <img src={`https://ui-avatars.com/api/?name=${user.name}&background=random`} alt="Profile" className="w-full h-full object-cover" />
+                        {/* Avatar */}
+                        <img
+                            src={user.photo || `https://ui-avatars.com/api/?name=${user.name}&background=random`}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                        />
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-slate-900">{user.name}</h2>
-                        <p className="text-sm text-slate-500">Teknik Informatika - UI</p>
+                        <p className="text-sm text-slate-500">{user.major || 'Jurusan Tidak Diketahui'} - {user.university || 'Universitas'}</p>
                         <div className="flex gap-2 mt-2">
-                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide">Student</span>
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${user.role === 'student' ? 'bg-slate-100 text-slate-600' : 'bg-slate-200 text-slate-500'}`}>
+                                {user.role === 'student' ? 'Student' : 'Tutor Mode'}
+                            </span>
                             {user.role === 'tutor' && <span className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide">Verified Tutor</span>}
                         </div>
                     </div>
-                </div>
-
-                {/* Switch Mode Widget */}
-                <div className="bg-slate-900 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-indigo-900/10 mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
-                            <RefreshCw className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-white font-bold">Switch to {user.role === 'student' ? 'Tutor' : 'Student'} Mode</h3>
-                            <p className="text-slate-400 text-xs">Access {user.role === 'student' ? 'earnings & jobs' : 'services & tasks'}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={switchMode}
-                        className="bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
-                    >
-                        Switch
-                    </button>
                 </div>
 
                 {/* Account Settings */}
